@@ -13,9 +13,6 @@ import android.os.Build;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.text.TextUtils;
 
 import java.io.File;
@@ -23,6 +20,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
 import static pl.aprilapps.easyphotopicker.EasyImageFiles.singleFileList;
 
@@ -102,7 +103,6 @@ public class EasyImage implements Constants {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return intent;
     }
 
@@ -186,6 +186,15 @@ public class EasyImage implements Constants {
         }
     }
 
+    public static void openChooserWithDocuments(androidx.appcompat.app.AppCompatActivity activity, @Nullable String chooserTitle, int type) {
+        try {
+            Intent intent = createChooserIntent(activity, chooserTitle, type);
+            activity.startActivityForResult(intent, RequestCodes.SOURCE_CHOOSER | RequestCodes.PICK_PICTURE_FROM_DOCUMENTS);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void openChooserWithDocuments(Fragment fragment, @Nullable String chooserTitle, int type) {
         try {
             Intent intent = createChooserIntent(fragment.getActivity(), chooserTitle, type);
@@ -205,6 +214,15 @@ public class EasyImage implements Constants {
     }
 
     public static void openChooserWithGallery(Activity activity, @Nullable String chooserTitle, int type) {
+        try {
+            Intent intent = createChooserIntent(activity, chooserTitle, true, type);
+            activity.startActivityForResult(intent, RequestCodes.SOURCE_CHOOSER | RequestCodes.PICK_PICTURE_FROM_GALLERY);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void openChooserWithGallery(androidx.appcompat.app.AppCompatActivity activity, @Nullable String chooserTitle, int type) {
         try {
             Intent intent = createChooserIntent(activity, chooserTitle, true, type);
             activity.startActivityForResult(intent, RequestCodes.SOURCE_CHOOSER | RequestCodes.PICK_PICTURE_FROM_GALLERY);
@@ -236,6 +254,11 @@ public class EasyImage implements Constants {
         activity.startActivityForResult(intent, RequestCodes.PICK_PICTURE_FROM_DOCUMENTS);
     }
 
+    public static void openDocuments(androidx.appcompat.app.AppCompatActivity activity, int type) {
+        Intent intent = createDocumentsIntent(activity, type);
+        activity.startActivityForResult(intent, RequestCodes.PICK_PICTURE_FROM_DOCUMENTS);
+    }
+
     public static void openDocuments(Fragment fragment, int type) {
         Intent intent = createDocumentsIntent(fragment.getContext(), type);
         fragment.startActivityForResult(intent, RequestCodes.PICK_PICTURE_FROM_DOCUMENTS);
@@ -252,6 +275,16 @@ public class EasyImage implements Constants {
      * @param type Custom type of your choice, which will be returned with the images
      */
     public static void openGallery(Activity activity, int type) {
+        Intent intent = createGalleryIntent(activity, type);
+        activity.startActivityForResult(intent, RequestCodes.PICK_PICTURE_FROM_GALLERY);
+    }
+
+    /**
+     * Opens default galery or a available galleries picker if there is no default
+     *
+     * @param type Custom type of your choice, which will be returned with the images
+     */
+    public static void openGallery(androidx.appcompat.app.AppCompatActivity activity, int type) {
         Intent intent = createGalleryIntent(activity, type);
         activity.startActivityForResult(intent, RequestCodes.PICK_PICTURE_FROM_GALLERY);
     }
@@ -281,6 +314,11 @@ public class EasyImage implements Constants {
         activity.startActivityForResult(intent, RequestCodes.TAKE_PICTURE);
     }
 
+    public static void openCameraForImage(androidx.appcompat.app.AppCompatActivity activity, int type) {
+        Intent intent = createCameraForImageIntent(activity, type);
+        activity.startActivityForResult(intent, RequestCodes.TAKE_PICTURE);
+    }
+
     public static void openCameraForImage(Fragment fragment, int type) {
         Intent intent = createCameraForImageIntent(fragment.getActivity(), type);
         fragment.startActivityForResult(intent, RequestCodes.TAKE_PICTURE);
@@ -292,6 +330,11 @@ public class EasyImage implements Constants {
     }
 
     public static void openCameraForVideo(Activity activity, int type) {
+        Intent intent = createCameraForVideoIntent(activity, type);
+        activity.startActivityForResult(intent, RequestCodes.CAPTURE_VIDEO);
+    }
+
+    public static void openCameraForVideo(androidx.appcompat.app.AppCompatActivity activity, int type) {
         Intent intent = createCameraForVideoIntent(activity, type);
         activity.startActivityForResult(intent, RequestCodes.CAPTURE_VIDEO);
     }
@@ -326,7 +369,7 @@ public class EasyImage implements Constants {
         }
     }
 
-    public static void handleActivityResult(int requestCode, int resultCode, Intent data, Activity activity, @NonNull Callbacks callbacks) {
+    public static void handleActivityResult(int requestCode, int resultCode, Intent data, Context context, @NonNull Callbacks callbacks) {
         boolean isEasyImage = (requestCode & RequestCodes.EASYIMAGE_IDENTIFICATOR) > 0;
         if (isEasyImage) {
             requestCode &= ~RequestCodes.SOURCE_CHOOSER;
@@ -336,25 +379,25 @@ public class EasyImage implements Constants {
                     requestCode == RequestCodes.PICK_PICTURE_FROM_DOCUMENTS) {
                 if (resultCode == Activity.RESULT_OK) {
                     if (requestCode == RequestCodes.PICK_PICTURE_FROM_DOCUMENTS && !isPhoto(data)) {
-                        onPictureReturnedFromDocuments(data, activity, callbacks);
+                        onPictureReturnedFromDocuments(data, context, callbacks);
                     } else if (requestCode == RequestCodes.PICK_PICTURE_FROM_GALLERY && !isPhoto(data)) {
-                        onPictureReturnedFromGallery(data, activity, callbacks);
+                        onPictureReturnedFromGallery(data, context, callbacks);
                     } else if (requestCode == RequestCodes.TAKE_PICTURE) {
-                        onPictureReturnedFromCamera(activity, callbacks);
+                        onPictureReturnedFromCamera(context, callbacks);
                     } else if (requestCode == RequestCodes.CAPTURE_VIDEO) {
-                        onVideoReturnedFromCamera(activity, callbacks);
+                        onVideoReturnedFromCamera(context, callbacks);
                     } else if (isPhoto(data)) {
-                        onPictureReturnedFromCamera(activity, callbacks);
+                        onPictureReturnedFromCamera(context, callbacks);
                     } else {
-                        onPictureReturnedFromDocuments(data, activity, callbacks);
+                        onPictureReturnedFromDocuments(data, context, callbacks);
                     }
                 } else {
                     if (requestCode == RequestCodes.PICK_PICTURE_FROM_DOCUMENTS) {
-                        callbacks.onCanceled(ImageSource.DOCUMENTS, restoreType(activity));
+                        callbacks.onCanceled(ImageSource.DOCUMENTS, restoreType(context));
                     } else if (requestCode == RequestCodes.PICK_PICTURE_FROM_GALLERY) {
-                        callbacks.onCanceled(ImageSource.GALLERY, restoreType(activity));
+                        callbacks.onCanceled(ImageSource.GALLERY, restoreType(context));
                     } else {
-                        callbacks.onCanceled(ImageSource.CAMERA_IMAGE, restoreType(activity));
+                        callbacks.onCanceled(ImageSource.CAMERA_IMAGE, restoreType(context));
                     }
                 }
             }
@@ -406,114 +449,113 @@ public class EasyImage implements Constants {
         }
     }
 
-    private static void onPictureReturnedFromDocuments(Intent data, Activity activity, @NonNull Callbacks callbacks) {
+    private static void onPictureReturnedFromDocuments(Intent data, Context context, @NonNull Callbacks callbacks) {
         try {
             Uri photoPath = data.getData();
-            File photoFile = EasyImageFiles.pickedExistingPicture(activity, photoPath);
-            callbacks.onImagesPicked(singleFileList(photoFile), ImageSource.DOCUMENTS, restoreType(activity));
+            File photoFile = EasyImageFiles.pickedExistingPicture(context, photoPath);
+            callbacks.onImagesPicked(singleFileList(photoFile), ImageSource.DOCUMENTS, restoreType(context));
 
-            if (configuration(activity).shouldCopyPickedImagesToPublicGalleryAppFolder()) {
-                EasyImageFiles.copyFilesInSeparateThread(activity, singleFileList(photoFile));
+            if (configuration(context).shouldCopyPickedImagesToPublicGalleryAppFolder()) {
+                EasyImageFiles.copyFilesInSeparateThread(context, singleFileList(photoFile));
             }
         } catch (Exception e) {
             e.printStackTrace();
-            callbacks.onImagePickerError(e, ImageSource.DOCUMENTS, restoreType(activity));
+            callbacks.onImagePickerError(e, ImageSource.DOCUMENTS, restoreType(context));
         }
     }
 
-    private static void onPictureReturnedFromGallery(Intent data, Activity activity, @NonNull Callbacks callbacks) {
+    private static void onPictureReturnedFromGallery(Intent data, Context context, @NonNull Callbacks callbacks) {
         try {
             ClipData clipData = data.getClipData();
             List<File> files = new ArrayList<>();
             if (clipData == null) {
                 Uri uri = data.getData();
-                File file = EasyImageFiles.pickedExistingPicture(activity, uri);
+                File file = EasyImageFiles.pickedExistingPicture(context, uri);
                 files.add(file);
             } else {
                 for (int i = 0; i < clipData.getItemCount(); i++) {
                     Uri uri = clipData.getItemAt(i).getUri();
-                    File file = EasyImageFiles.pickedExistingPicture(activity, uri);
+                    File file = EasyImageFiles.pickedExistingPicture(context, uri);
                     files.add(file);
                 }
             }
 
-            if (configuration(activity).shouldCopyPickedImagesToPublicGalleryAppFolder()) {
-                EasyImageFiles.copyFilesInSeparateThread(activity, files);
+            if (configuration(context).shouldCopyPickedImagesToPublicGalleryAppFolder()) {
+                EasyImageFiles.copyFilesInSeparateThread(context, files);
             }
 
-            callbacks.onImagesPicked(files, ImageSource.GALLERY, restoreType(activity));
+            callbacks.onImagesPicked(files, ImageSource.GALLERY, restoreType(context));
         } catch (Exception e) {
             e.printStackTrace();
-            callbacks.onImagePickerError(e, ImageSource.GALLERY, restoreType(activity));
+            callbacks.onImagePickerError(e, ImageSource.GALLERY, restoreType(context));
         }
     }
 
-    private static void onPictureReturnedFromCamera(Activity activity, @NonNull Callbacks callbacks) {
+    private static void onPictureReturnedFromCamera(Context context, @NonNull Callbacks callbacks) {
         try {
-            String lastImageUri = PreferenceManager.getDefaultSharedPreferences(activity).getString(KEY_PHOTO_URI, null);
+            String lastImageUri = PreferenceManager.getDefaultSharedPreferences(context).getString(KEY_PHOTO_URI, null);
             if (!TextUtils.isEmpty(lastImageUri)) {
-                revokeWritePermission(activity, Uri.parse(lastImageUri));
+                revokeWritePermission(context, Uri.parse(lastImageUri));
             }
 
-            File photoFile = EasyImage.takenCameraPicture(activity);
+            File photoFile = EasyImage.takenCameraPicture(context);
             List<File> files = new ArrayList<>();
             files.add(photoFile);
 
             if (photoFile == null) {
                 Exception e = new IllegalStateException("Unable to get the picture returned from camera");
-                callbacks.onImagePickerError(e, ImageSource.CAMERA_IMAGE, restoreType(activity));
+                callbacks.onImagePickerError(e, ImageSource.CAMERA_IMAGE, restoreType(context));
             } else {
-                if (configuration(activity).shouldCopyTakenPhotosToPublicGalleryAppFolder()) {
-                    EasyImageFiles.copyFilesInSeparateThread(activity, singleFileList(photoFile));
+                if (configuration(context).shouldCopyTakenPhotosToPublicGalleryAppFolder()) {
+                    EasyImageFiles.copyFilesInSeparateThread(context, singleFileList(photoFile));
                 }
 
-                callbacks.onImagesPicked(files, ImageSource.CAMERA_IMAGE, restoreType(activity));
+                callbacks.onImagesPicked(files, ImageSource.CAMERA_IMAGE, restoreType(context));
             }
 
-            PreferenceManager.getDefaultSharedPreferences(activity)
+            PreferenceManager.getDefaultSharedPreferences(context)
                     .edit()
                     .remove(KEY_LAST_CAMERA_PHOTO)
                     .remove(KEY_PHOTO_URI)
                     .apply();
         } catch (Exception e) {
             e.printStackTrace();
-            callbacks.onImagePickerError(e, ImageSource.CAMERA_IMAGE, restoreType(activity));
+            callbacks.onImagePickerError(e, ImageSource.CAMERA_IMAGE, restoreType(context));
         }
     }
 
-    private static void onVideoReturnedFromCamera(Activity activity, @NonNull Callbacks callbacks) {
+    private static void onVideoReturnedFromCamera(Context context, @NonNull Callbacks callbacks) {
         try {
-            String lastVideoUri = PreferenceManager.getDefaultSharedPreferences(activity).getString(KEY_VIDEO_URI, null);
+            String lastVideoUri = PreferenceManager.getDefaultSharedPreferences(context).getString(KEY_VIDEO_URI, null);
             if (!TextUtils.isEmpty(lastVideoUri)) {
-                revokeWritePermission(activity, Uri.parse(lastVideoUri));
+                revokeWritePermission(context, Uri.parse(lastVideoUri));
             }
 
-            File photoFile = EasyImage.takenCameraVideo(activity);
+            File photoFile = EasyImage.takenCameraVideo(context);
             List<File> files = new ArrayList<>();
             files.add(photoFile);
 
             if (photoFile == null) {
                 Exception e = new IllegalStateException("Unable to get the video returned from camera");
-                callbacks.onImagePickerError(e, ImageSource.CAMERA_VIDEO, restoreType(activity));
+                callbacks.onImagePickerError(e, ImageSource.CAMERA_VIDEO, restoreType(context));
             } else {
-                if (configuration(activity).shouldCopyTakenPhotosToPublicGalleryAppFolder()) {
-                    EasyImageFiles.copyFilesInSeparateThread(activity, singleFileList(photoFile));
+                if (configuration(context).shouldCopyTakenPhotosToPublicGalleryAppFolder()) {
+                    EasyImageFiles.copyFilesInSeparateThread(context, singleFileList(photoFile));
                 }
 
-                callbacks.onImagesPicked(files, ImageSource.CAMERA_VIDEO, restoreType(activity));
+                callbacks.onImagesPicked(files, ImageSource.CAMERA_VIDEO, restoreType(context));
             }
 
-            PreferenceManager.getDefaultSharedPreferences(activity)
+            PreferenceManager.getDefaultSharedPreferences(context)
                     .edit()
                     .remove(KEY_LAST_CAMERA_VIDEO)
                     .remove(KEY_VIDEO_URI)
                     .apply();
         } catch (Exception e) {
             e.printStackTrace();
-            callbacks.onImagePickerError(e, ImageSource.CAMERA_VIDEO, restoreType(activity));
+            callbacks.onImagePickerError(e, ImageSource.CAMERA_VIDEO, restoreType(context));
         }
     }
-
 
     /**
      * Method to clear configuration. Would likely be used in onDestroy(), onDestroyView()...
